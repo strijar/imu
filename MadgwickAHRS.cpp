@@ -28,22 +28,13 @@ MadgwickAHRS::MadgwickAHRS(double beta) : beta(beta) {
     q2 = 0.0f;
     q3 = 0.0f;
 
-    a0 = 0.0;
-    a1 = 0.0;
-    a2 = 0.0;
-
-    v0 = 0.0;
-    v1 = 0.0;
-    v2 = 0.1;
-
-    x = 0;
-    y = 0;
-    z = 0;
+    vel = Vector3d::Zero();
+    pos = Vector3d::Zero();
 
     aSigma = 0;
 }
 
-void MadgwickAHRS::update(double dt, double gx, double gy, double gz, double ax, double ay, double az, double mx, double my, double mz) {
+void MadgwickAHRS::update(double dt, Vector3d gyro, Vector3d accel, Vector3d mag) {
     double recipNorm;
     double s0, s1, s2, s3;
     double qDot1, qDot2, qDot3, qDot4;
@@ -52,49 +43,25 @@ void MadgwickAHRS::update(double dt, double gx, double gy, double gz, double ax,
     double _4bx, _4bz, _8bx, _8bz, _2q0, _2q1, _2q2, _2q3;
     double _2q0q2, _2q2q3, q0q0, q0q1, q0q2, q0q3, q1q1, q1q2, q1q3, q2q2, q2q3, q3q3;
 
-    // Use IMU algorithm if magnetometer measurement invalid (avoids NaN in magnetometer normalisation)
-
-    if ((mx == 0.0f) && (my == 0.0f) && (mz == 0.0f)) {
-	updateIMU(dt, gx, gy, gz, ax, ay, az);
-	return;
-    }
-
-    // Convert gyroscope degrees/sec to radians/sec
-
-    gx *= 0.0174533;
-    gy *= 0.0174533;
-    gz *= 0.0174533;
-
     // Rate of change of quaternion from gyroscope
 
-    qDot1 = 0.5f * (-q1 * gx - q2 * gy - q3 * gz);
-    qDot2 = 0.5f * (q0 * gx + q2 * gz - q3 * gy);
-    qDot3 = 0.5f * (q0 * gy - q1 * gz + q3 * gx);
-    qDot4 = 0.5f * (q0 * gz + q1 * gy - q2 * gx);
+    qDot1 = 0.5f * (-q1 * gyro(0) - q2 * gyro(1) - q3 * gyro(2));
+    qDot2 = 0.5f * (q0 * gyro(0) + q2 * gyro(2) - q3 * gyro(1));
+    qDot3 = 0.5f * (q0 * gyro(1) - q1 * gyro(2) + q3 * gyro(0));
+    qDot4 = 0.5f * (q0 * gyro(2) + q1 * gyro(1) - q2 * gyro(0));
 
     // Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
 
-    if (!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
-	// Normalise accelerometer measurement
-
-	recipNorm = invSqrt(ax * ax + ay * ay + az * az);
-	ax *= recipNorm;
-	ay *= recipNorm;
-	az *= recipNorm;
-
-	// Normalise magnetometer measurement
-
-	recipNorm = invSqrt(mx * mx + my * my + mz * mz);
-	mx *= recipNorm;
-	my *= recipNorm;
-	mz *= recipNorm;
+    if (!((accel(0) == 0.0f) && (accel(1) == 0.0f) && (accel(2) == 0.0f))) {
+	accel.normalize();
+	mag.normalize();
 
 	// Auxiliary variables to avoid repeated arithmetic
 
-	_2q0mx = 2.0f * q0 * mx;
-	_2q0my = 2.0f * q0 * my;
-	_2q0mz = 2.0f * q0 * mz;
-	_2q1mx = 2.0f * q1 * mx;
+	_2q0mx = 2.0f * q0 * mag(0);
+	_2q0my = 2.0f * q0 * mag(1);
+	_2q0mz = 2.0f * q0 * mag(2);
+	_2q1mx = 2.0f * q1 * mag(0);
 	_2q0 = 2.0f * q0;
 	_2q1 = 2.0f * q1;
 	_2q2 = 2.0f * q2;
@@ -114,10 +81,10 @@ void MadgwickAHRS::update(double dt, double gx, double gy, double gz, double ax,
 
 	// Reference direction of Earth's magnetic field
 
-	hx = mx * q0q0 - _2q0my * q3 + _2q0mz * q2 + mx * q1q1 + _2q1 * my * q2 + _2q1 * mz * q3 - mx * q2q2 - mx * q3q3;
-	hy = _2q0mx * q3 + my * q0q0 - _2q0mz * q1 + _2q1mx * q2 - my * q1q1 + my * q2q2 + _2q2 * mz * q3 - my * q3q3;
+	hx = mag(0) * q0q0 - _2q0my * q3 + _2q0mz * q2 + mag(0) * q1q1 + _2q1 * mag(1) * q2 + _2q1 * mag(2) * q3 - mag(0) * q2q2 - mag(0) * q3q3;
+	hy = _2q0mx * q3 + mag(1) * q0q0 - _2q0mz * q1 + _2q1mx * q2 - mag(1) * q1q1 + mag(1) * q2q2 + _2q2 * mag(2) * q3 - mag(1) * q3q3;
 	_2bx = sqrt(hx * hx + hy * hy);
-	_2bz = -_2q0mx * q2 + _2q0my * q1 + mz * q0q0 + _2q1mx * q3 - mz * q1q1 + _2q2 * my * q3 - mz * q2q2 + mz * q3q3;
+	_2bz = -_2q0mx * q2 + _2q0my * q1 + mag(2) * q0q0 + _2q1mx * q3 - mag(2) * q1q1 + _2q2 * mag(1) * q3 - mag(2) * q2q2 + mag(2) * q3q3;
 	_4bx = 2.0f * _2bx;
 	_4bz = 2.0f * _2bz;
 	_8bx = 2.0f * _4bx;
@@ -125,10 +92,10 @@ void MadgwickAHRS::update(double dt, double gx, double gy, double gz, double ax,
 
 	// Gradient decent algorithm corrective step
 
-	s0= -_2q2*(2.0f*(q1q3 - q0q2) - ax) + _2q1*(2.0f*(q0q1 + q2q3) - ay) + -_4bz*q2*(_4bx*(0.5 - q2q2 - q3q3) + _4bz*(q1q3 - q0q2) - mx) + (-_4bx*q3+_4bz*q1)*(_4bx*(q1q2 - q0q3) + _4bz*(q0q1 + q2q3) - my)    +   _4bx*q2*(_4bx*(q0q2 + q1q3) + _4bz*(0.5 - q1q1 - q2q2) - mz);
-	s1= _2q3*(2.0f*(q1q3 - q0q2) - ax) + _2q0*(2.0f*(q0q1 + q2q3) - ay) + -4.0f*q1*(2.0f*(0.5 - q1q1 - q2q2) - az) + _4bz*q3*(_4bx*(0.5 - q2q2 - q3q3) + _4bz*(q1q3 - q0q2) - mx)   + (_4bx*q2+_4bz*q0)*(_4bx*(q1q2 - q0q3) + _4bz*(q0q1 + q2q3) - my)   +   (_4bx*q3-_8bz*q1)*(_4bx*(q0q2 + q1q3) + _4bz*(0.5 - q1q1 - q2q2) - mz);             
-	s2= -_2q0*(2.0f*(q1q3 - q0q2) - ax) + _2q3*(2.0f*(q0q1 + q2q3) - ay) + (-4.0f*q2)*(2.0f*(0.5 - q1q1 - q2q2) - az) + (-_8bx*q2-_4bz*q0)*(_4bx*(0.5 - q2q2 - q3q3) + _4bz*(q1q3 - q0q2) - mx)+(_4bx*q1+_4bz*q3)*(_4bx*(q1q2 - q0q3) + _4bz*(q0q1 + q2q3) - my)+(_4bx*q0-_8bz*q2)*(_4bx*(q0q2 + q1q3) + _4bz*(0.5 - q1q1 - q2q2) - mz);
-	s3= _2q1*(2.0f*(q1q3 - q0q2) - ax) + _2q2*(2.0f*(q0q1 + q2q3) - ay)+(-_8bx*q3+_4bz*q1)*(_4bx*(0.5 - q2q2 - q3q3) + _4bz*(q1q3 - q0q2) - mx)+(-_4bx*q0+_4bz*q2)*(_4bx*(q1q2 - q0q3) + _4bz*(q0q1 + q2q3) - my)+(_4bx*q1)*(_4bx*(q0q2 + q1q3) + _4bz*(0.5 - q1q1 - q2q2) - mz);
+	s0= -_2q2*(2.0f*(q1q3 - q0q2) - accel(0)) + _2q1*(2.0f*(q0q1 + q2q3) - accel(1)) + -_4bz*q2*(_4bx*(0.5 - q2q2 - q3q3) + _4bz*(q1q3 - q0q2) - mag(0)) + (-_4bx*q3+_4bz*q1)*(_4bx*(q1q2 - q0q3) + _4bz*(q0q1 + q2q3) - mag(1))    +   _4bx*q2*(_4bx*(q0q2 + q1q3) + _4bz*(0.5 - q1q1 - q2q2) - mag(2));
+	s1= _2q3*(2.0f*(q1q3 - q0q2) - accel(0)) + _2q0*(2.0f*(q0q1 + q2q3) - accel(1)) + -4.0f*q1*(2.0f*(0.5 - q1q1 - q2q2) - accel(2)) + _4bz*q3*(_4bx*(0.5 - q2q2 - q3q3) + _4bz*(q1q3 - q0q2) - mag(0))   + (_4bx*q2+_4bz*q0)*(_4bx*(q1q2 - q0q3) + _4bz*(q0q1 + q2q3) - mag(1))   +   (_4bx*q3-_8bz*q1)*(_4bx*(q0q2 + q1q3) + _4bz*(0.5 - q1q1 - q2q2) - mag(2));
+	s2= -_2q0*(2.0f*(q1q3 - q0q2) - accel(0)) + _2q3*(2.0f*(q0q1 + q2q3) - accel(1)) + (-4.0f*q2)*(2.0f*(0.5 - q1q1 - q2q2) - accel(2)) + (-_8bx*q2-_4bz*q0)*(_4bx*(0.5 - q2q2 - q3q3) + _4bz*(q1q3 - q0q2) - mag(0))+(_4bx*q1+_4bz*q3)*(_4bx*(q1q2 - q0q3) + _4bz*(q0q1 + q2q3) - mag(1))+(_4bx*q0-_8bz*q2)*(_4bx*(q0q2 + q1q3) + _4bz*(0.5 - q1q1 - q2q2) - mag(2));
+	s3= _2q1*(2.0f*(q1q3 - q0q2) - accel(0)) + _2q2*(2.0f*(q0q1 + q2q3) - accel(1))+(-_8bx*q3+_4bz*q1)*(_4bx*(0.5 - q2q2 - q3q3) + _4bz*(q1q3 - q0q2) - mag(0))+(-_4bx*q0+_4bz*q2)*(_4bx*(q1q2 - q0q3) + _4bz*(q0q1 + q2q3) - mag(1))+(_4bx*q1)*(_4bx*(q0q2 + q1q3) + _4bz*(0.5 - q1q1 - q2q2) - mag(2));
 
 	recipNorm = invSqrt(s0 * s0 + s1 * s1 + s2 * s2 + s3 * s3); // normalise step magnitude
 	s0 *= recipNorm;
@@ -159,34 +126,21 @@ void MadgwickAHRS::update(double dt, double gx, double gy, double gz, double ax,
     q3 *= recipNorm;
 }
 
-void MadgwickAHRS::updateIMU(double dt, double gx, double gy, double gz, double ax, double ay, double az) {
+void MadgwickAHRS::update(double dt, Vector3d gyro, Vector3d accel) {
     double recipNorm;
     double s0, s1, s2, s3;
     double qDot1, qDot2, qDot3, qDot4;
     double _2q0, _2q1, _2q2, _2q3, _4q0, _4q1, _4q2 ,_8q1, _8q2, q0q0, q1q1, q2q2, q3q3;
 
-    // Convert gyroscope degrees/sec to radians/sec
-
-    gx *= 0.0174533;
-    gy *= 0.0174533;
-    gz *= 0.0174533;
-
-    // Rate of change of quaternion from gyroscope
-
-    qDot1 = 0.5f * (-q1 * gx - q2 * gy - q3 * gz);
-    qDot2 = 0.5f * (q0 * gx + q2 * gz - q3 * gy);
-    qDot3 = 0.5f * (q0 * gy - q1 * gz + q3 * gx);
-    qDot4 = 0.5f * (q0 * gz + q1 * gy - q2 * gx);
+    qDot1 = 0.5f * (-q1 * gyro(0) - q2 * gyro(1) - q3 * gyro(2));
+    qDot2 = 0.5f * (q0 * gyro(0) + q2 * gyro(2) - q3 * gyro(1));
+    qDot3 = 0.5f * (q0 * gyro(1) - q1 * gyro(2) + q3 * gyro(0));
+    qDot4 = 0.5f * (q0 * gyro(2) + q1 * gyro(1) - q2 * gyro(0));
 
     // Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
 
-    if (!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
-	// Normalise accelerometer measurement
-
-	recipNorm = invSqrt(ax * ax + ay * ay + az * az);
-	ax *= recipNorm;
-	ay *= recipNorm;
-	az *= recipNorm;
+    if (!((accel(0) == 0.0f) && (accel(1) == 0.0f) && (accel(2) == 0.0f))) {
+	accel.normalize();
 
 	// Auxiliary variables to avoid repeated arithmetic
 
@@ -206,10 +160,10 @@ void MadgwickAHRS::updateIMU(double dt, double gx, double gy, double gz, double 
 
 	// Gradient decent algorithm corrective step
 
-	s0 = _4q0 * q2q2 + _2q2 * ax + _4q0 * q1q1 - _2q1 * ay;
-	s1 = _4q1 * q3q3 - _2q3 * ax + 4.0f * q0q0 * q1 - _2q0 * ay - _4q1 + _8q1 * q1q1 + _8q1 * q2q2 + _4q1 * az;
-	s2 = 4.0f * q0q0 * q2 + _2q0 * ax + _4q2 * q3q3 - _2q3 * ay - _4q2 + _8q2 * q1q1 + _8q2 * q2q2 + _4q2 * az;
-	s3 = 4.0f * q1q1 * q3 - _2q1 * ax + 4.0f * q2q2 * q3 - _2q2 * ay;
+	s0 = _4q0 * q2q2 + _2q2 * accel(0) + _4q0 * q1q1 - _2q1 * accel(1);
+	s1 = _4q1 * q3q3 - _2q3 * accel(0) + 4.0f * q0q0 * q1 - _2q0 * accel(1) - _4q1 + _8q1 * q1q1 + _8q1 * q2q2 + _4q1 * accel(2);
+	s2 = 4.0f * q0q0 * q2 + _2q0 * accel(0) + _4q2 * q3q3 - _2q3 * accel(1) - _4q2 + _8q2 * q1q1 + _8q2 * q2q2 + _4q2 * accel(2);
+	s3 = 4.0f * q1q1 * q3 - _2q1 * accel(0) + 4.0f * q2q2 * q3 - _2q2 * accel(1);
 
 	recipNorm = invSqrt(s0 * s0 + s1 * s1 + s2 * s2 + s3 * s3); // normalise step magnitude
 	s0 *= recipNorm;
@@ -245,44 +199,36 @@ double MadgwickAHRS::invSqrt(double x) {
     return 1.0/sqrt(x);
 }
 
-void MadgwickAHRS::getAngles(double *roll, double *pitch, double *yaw) {
+void MadgwickAHRS::getAngles(Vector3d &res) {
     double a12 = 2.0f * (q1 * q2 + q0 * q3);
     double a22 = q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3;
     double a31 = 2.0f * (q0 * q1 + q2 * q3);
     double a32 = 2.0f * (q1 * q3 - q0 * q2);
     double a33 = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
 
-    *roll = atan2f(a31, a33);
-    *pitch = -asinf(a32);
-    *yaw = atan2f(a12, a22);
+    res(0) = atan2(a31, a33);
+    res(1) = -asin(a32);
+    res(2) = atan2(a12, a22);
 }
 
-void MadgwickAHRS::gravityCompensate(double ax, double ay, double az) {
-    double g0 = 2.0 * (q1 * q3 - q0 * q2);
-    double g1 = 2.0 * (q0 * q1 + q2 * q3);
-    double g2 = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
+void MadgwickAHRS::gravityCompensate(Vector3d &accel) {
+    Vector3d g;
 
-    a0 = (ax - g0);
-    a1 = (ay - g1);
-    a2 = (az - g2);
+    g(0) = 2.0 * (q1 * q3 - q0 * q2);
+    g(1) = 2.0 * (q0 * q1 + q2 * q3);
+    g(2) = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
+
+    this->accel = accel - g;
 }
 
 void MadgwickAHRS::integrate(double dt) {
-    double r = sqrt(a0 * a0 + a1 * a1 + a2 * a2);
-
-    if (r > aSigma) {
-	v0 += a0 * dt * 9.80665;
-	v1 += a1 * dt * 9.80665;
-	v2 += a2 * dt * 9.80665;
+    if (accel.norm() > aSigma) {
+	vel += accel * dt * 9.80665;
     } else {
-	v0 *= 0.75;
-	v1 *= 0.75;
-	v2 *= 0.75;
+	vel *= 0.75;
     }
 
-    x += v0 * dt;
-    y += v1 * dt;
-    z += v2 * dt;
+    pos = vel * dt;
 }
 
 void MadgwickAHRS::setAccelSigma(double x) {

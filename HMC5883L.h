@@ -18,7 +18,10 @@
 #ifndef HMC5883L_H
 #define HMC5883L_H
 
+#include "Devices.h"
 #include "I2cPort.h"
+#include <Eigen/Dense>
+
 
 #define HMC5883L_DEV_ADD 0x1E
 #define CONFIG_A 0x00
@@ -78,11 +81,13 @@
 
 #define RDY_BIT 0x00
 #define LOCK_BIT 0x01
+
 using namespace cacaosd_i2cport;
+using namespace Eigen;
 
 namespace cacaosd_hmc5883l {
 
-    class HMC5883L {
+    class HMC5883L : public Magnetometer {
     public:
         HMC5883L(I2cPort *i2c);
 
@@ -114,11 +119,7 @@ namespace cacaosd_hmc5883l {
 
         uint8_t getOperationMode() const;
 
-        int16_t getMagnitudeX() const;
-
-        int16_t getMagnitudeY() const;
-
-        int16_t getMagnitudeZ() const;
+	virtual void getMagnitude(Vector3i &res) const;
 
         uint8_t getRDYStatus() const;
 

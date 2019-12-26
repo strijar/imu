@@ -6,16 +6,21 @@ from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner
 
 class Component(ApplicationSession):
 
-    def on_angle(self, i):
-        print("Got angles: {}".format(i))
+    def on_mag(self, i):
+        print("Got mag: {}".format(i))
+        with open("mag.txt", "a") as f:
+           raw = i['raw']
+           f.write("%i\t%i\t%i\n" % (raw["x"], raw["y"], raw["z"]))
+           f.close()
 
-    def on_accel(self, i):
-        print("Got accel: {}".format(i))
+        with open("mag_cal.txt", "a") as f:
+           cal = i['cal']
+           f.write("%.1f\t%.1f\t%.1f\n" % (cal["x"], cal["y"], cal["z"]))
+           f.close()
 
     def onJoin(self, details):
         print("session attached")
-        self.subscribe(self.on_angle, u'angle')
-#        self.subscribe(self.on_accel, u'accel')
+        self.subscribe(self.on_mag, u'calMag')
 
     def onDisconnect(self):
         print("disconnected")

@@ -260,28 +260,10 @@ namespace cacaosd_hmc5883l {
                                  OPERATION_MODE_START);
     }
 
-/** Get X-axis heading measurement.
- * @return 16-bit signed integer with X-axis heading
- * @see X_HIGH
- */
-    int16_t HMC5883L::getMagnitudeX() const {
-        return i2c->readWord(X_HIGH, X_LOW);
-    }
-
-/** Get Y-axis heading measurement.
- * @return 16-bit signed integer with Y-axis heading
- * @see Y_HIGH
- */
-    int16_t HMC5883L::getMagnitudeY() const {
-        return i2c->readWord(Y_HIGH, Y_LOW);
-    }
-
-/** Get Z-axis heading measurement.
- * @return 16-bit signed integer with Z-axis heading
- * @see Z_HIGH
- */
-    int16_t HMC5883L::getMagnitudeZ() const {
-        return i2c->readWord(Z_HIGH, Z_LOW);
+    void HMC5883L::getMagnitude(Vector3i &res) const {
+	res(0) = i2c->readWord(X_HIGH, X_LOW);
+	res(1) = i2c->readWord(Y_HIGH, Y_LOW);
+	res(2) = i2c->readWord(Z_HIGH, Z_LOW);
     }
 
 /** Get data ready status.

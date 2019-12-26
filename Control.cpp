@@ -12,6 +12,7 @@ using namespace wampcc;
 Control::Control(Compensation *comp, MadgwickAHRS *ahrs) {
     this->comp = comp;
     this->ahrs = ahrs;
+    this->mag = NULL;
 
     localThread = NULL;
     localSession = NULL;
@@ -24,6 +25,10 @@ Control::~Control() {
     if (localThread) {
 	delete localThread;
     }
+}
+
+void Control::setMagnetometer(Magnetometer *mag) {
+    this->mag = mag;
 }
 
 void Control::init() {
@@ -48,15 +53,12 @@ void Control::localWork() {
 
 	localSession->hello("imu").wait_for(std::chrono::seconds(3));
 
-	if (localSession->is_open()) {
-	    std::cout << "Local session: open\n";
-
-	    while (true) {
-		sleep(5);
-	    }
-	} else {
-	    std::cout << "Local session: problem";
+	while (localSession->is_open()) {
+	    work();
+	    usleep(1000000/publishFreq);
 	}
+
+	std::cout << "Local session: closed";
     }
 }
 
@@ -120,38 +122,61 @@ bool Control::storeConfig(std::string filename) {
 }
 
 void Control::publishAngle() {
-    double	pitch, roll, yaw;
+    Vector3d	angle;
 
-    ahrs->getAngles(&roll, &pitch, &yaw);
+    ahrs->getAngles(angle);
 
     json_object opts;
 
-    opts["pitch"] = pitch * 180.0 / PI;
-    opts["roll"] = roll * 180.0 / PI;
-    opts["yaw"] = yaw * 180.0 / PI;
+    opts["pitch"] = angle(0) * 180.0 / PI;
+    opts["roll"] = angle(1) * 180.0 / PI;
+    opts["yaw"] = angle(2) * 180.0 / PI;
 
-    if (localSession) {
-	localSession->publish("angle", {}, {{ opts }}, {});
-    }
+    localSession->publish("angle", {}, {{ opts }}, {});
 }
 
 void Control::publishAccel() {
     json_object opts;
 
-    opts["x"] = ahrs->a0 * 1000.0;
-    opts["y"] = ahrs->a1 * 1000.0;
-    opts["z"] = ahrs->a2 * 1000.0;
+    opts["x"] = ahrs->accel(0) * 1000.0;
+    opts["y"] = ahrs->accel(1) * 1000.0;
+    opts["z"] = ahrs->accel(2) * 1000.0;
 
-    if (localSession) {
-	localSession->publish("accel", {}, {{ opts }}, {});
-    }
+    localSession->publish("accel", {}, {{ opts }}, {});
 }
 
 void Control::work() {
-    while (true) {
-	publishAngle();
-	publishAccel();
+    publishAngle();
+    publishAccel();
+}
 
-	usleep(1000000/publishFreq);
+void Control::publishCalibrateAccel() {
+}
+
+void Control::publishCalibrateGyro() {
+}
+
+void Control::publishCalibrateMag() {
+/*
+    json_object opts, raw, cal;
+
+    if (mag && localSession) {
+	int16_t	m[3];
+	double	c[3];
+
+	comp->calcMagAvr();
+
+	m[0] = comp->mAvr[0];	m[1] = comp->mAvr[1];	m[2] = comp->mAvr[2];
+
+	comp->doMag(m, c);
+
+	raw["x"] = m[0];	raw["y"] = m[1];	raw["z"] = m[2];
+	cal["x"] = c[0];	cal["y"] = c[1];	cal["z"] = c[2];
+
+	opts["raw"] = raw;
+	opts["cal"] = cal;
+
+	localSession->publish("calMag", {}, {{ opts }}, {});
     }
+*/
 }

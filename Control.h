@@ -4,6 +4,7 @@
 #include <wampcc/wampcc.h>
 #include <wampcc/json.h>
 
+#include "Devices.h"
 #include "Compensation.h"
 #include "MadgwickAHRS.h"
 
@@ -20,23 +21,32 @@ private:
 
     json_value	config;
 
-    Compensation *comp;
-    MadgwickAHRS *ahrs;
+    Compensation	*comp;
+    MadgwickAHRS	*ahrs;
+    Magnetometer	*mag;
 
     void localWork();
 
     void publishAngle();
     void publishAccel();
 
+    void work();
+
 public:
     Control(Compensation *comp, MadgwickAHRS *ahrs);
     virtual ~Control();
 
+    void setMagnetometer(Magnetometer *mag);
+
     void init();
-    void work();
 
     bool loadConfig(std::string filename);
     bool storeConfig(std::string filename);
+
+    void publishCalibrateAccel();
+    void publishCalibrateGyro();
+    void publishCalibrateMag();
+
 };
 
 #endif

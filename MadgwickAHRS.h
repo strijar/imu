@@ -14,6 +14,10 @@
 #ifndef MadgwickAHRS_h
 #define MadgwickAHRS_h
 
+#include <Eigen/Dense>
+
+using namespace Eigen;
+
 class MadgwickAHRS {
 private:
 
@@ -24,17 +28,21 @@ private:
     double invSqrt(double x);
 
 public:
-    double a0, a1, a2;		// acceleration
-    double v0, v1, v2;		// velocity;
-    double x, y, z;		// pos;
+
+    Vector3d	accel;
+    Vector3d	vel;
+    Vector3d	pos;
 
 public:
     MadgwickAHRS(double beta);
 
-    void update(double dt, double gx, double gy, double gz, double ax, double ay, double az, double mx, double my, double mz);
+    void update(double dt, Vector3d gyro, Vector3d accel, Vector3d mag);
+    void update(double dt, Vector3d gyro, Vector3d accel);
+
+    void getAngles(Vector3d &res);
+    void gravityCompensate(Vector3d &accel);
+
     void updateIMU(double dt, double gx, double gy, double gz, double ax, double ay, double az);
-    void getAngles(double *roll, double *pitch, double *yaw);
-    void gravityCompensate(double ax, double ay, double az);
     void integrate(double dt);
 
     void setAccelSigma(double x);

@@ -187,6 +187,18 @@ namespace cacaosd_mpu6050 {
         return fs;
     }
 
+    void MPU6050::getAngularVelocity(Vector3i &res) const {
+        res(0) = i2c->readWord(GYRO_XOUT_H, GYRO_XOUT_L);
+        res(1) = i2c->readWord(GYRO_YOUT_H, GYRO_YOUT_L);
+        res(2) = i2c->readWord(GYRO_ZOUT_H, GYRO_ZOUT_L);
+    }
+
+    void MPU6050::getAcceleration(Vector3i &res) const {
+        res(0) = i2c->readWord(ACCEL_XOUT_H, ACCEL_XOUT_L);
+        res(1) = i2c->readWord(ACCEL_YOUT_H, ACCEL_YOUT_L);
+        res(2) = i2c->readWord(ACCEL_ZOUT_H, ACCEL_ZOUT_L);
+    }
+
     void MPU6050::getAccelerations(int16_t *accels) {
         accels[0] = i2c->readWord(ACCEL_XOUT_H, ACCEL_XOUT_L);
         accels[1] = i2c->readWord(ACCEL_YOUT_H, ACCEL_YOUT_L);

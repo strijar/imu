@@ -18,7 +18,10 @@
 #ifndef MPU6050_H
 #define    MPU6050_H
 
+#include <Eigen/Dense>
+#include "Devices.h"
 #include "I2cPort.h"
+
 
 #define SELF_TEST_X 0x0D
 #define SELF_TEST_Y 0x0E
@@ -94,15 +97,20 @@
 #define DEV_RESET_BIT 7
 #define FIFO_EN_BIT 6
 #define FIFO_RESET_BIT 2
+
 using namespace cacaosd_i2cport;
+using namespace Eigen;
 
 namespace cacaosd_mpu6050 {
 
-    class MPU6050 {
+    class MPU6050 : public Gyroscop, public Accelerometer {
     public:
         MPU6050(I2cPort *i2c);
 
         virtual ~MPU6050();
+
+	virtual void getAngularVelocity(Vector3i &res) const;
+	virtual void getAcceleration(Vector3i &res)const;
 
         void initialize();
 
