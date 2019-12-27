@@ -23,20 +23,34 @@ private:
 
     Compensation	*comp;
     MadgwickAHRS	*ahrs;
-    Magnetometer	*mag;
+
+    Vector3i		*mag;
+    Vector3i		*gyro;
+    Vector3i		*accel;
 
     void localWork();
 
     void publishAngle();
     void publishAccel();
 
+    void publishAccelRaw();
+    void publishGyroRaw();
+    void publishMagRaw();
+
     void work();
+
+    void getFreq(wamp_session& caller, call_info& info);
+    void setFreq(wamp_session& caller, call_info& info);
+    void loadConfig(wamp_session& caller, call_info& info);
+    void storeConfig(wamp_session& caller, call_info& info);
 
 public:
     Control(Compensation *comp, MadgwickAHRS *ahrs);
     virtual ~Control();
 
-    void setMagnetometer(Magnetometer *mag);
+    void setMagnetometer(Vector3i *mag);
+    void setGyroscop(Vector3i *gyro);
+    void setAccelerometer(Vector3i *accel);
 
     void init();
 

@@ -3,24 +3,30 @@
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner
+from autobahn import wamp
 
 class Component(ApplicationSession):
 
+    @wamp.subscribe(u'mag.raw')
     def on_mag(self, i):
         print("Got mag: {}".format(i))
-        with open("mag.txt", "a") as f:
-           raw = i['raw']
-           f.write("%i\t%i\t%i\n" % (raw["x"], raw["y"], raw["z"]))
-           f.close()
 
-        with open("mag_cal.txt", "a") as f:
-           cal = i['cal']
-           f.write("%.1f\t%.1f\t%.1f\n" % (cal["x"], cal["y"], cal["z"]))
-           f.close()
+    @wamp.subscribe(u'accel.raw')
+    def on_accel(self, i):
+        print("Got accel: {}".format(i))
 
+    @wamp.subscribe(u'gyro.raw')
+    def on_angle(self, i):
+        print("Got gyro: {}".format(i))
+
+    @inlineCallbacks
     def onJoin(self, details):
         print("session attached")
-        self.subscribe(self.on_mag, u'calMag')
+
+        res = yield self.call(u'SetFreq', freq=10)
+        print("Answer: {}".format(res))
+
+        results = yield self.subscribe(self)
 
     def onDisconnect(self):
         print("disconnected")

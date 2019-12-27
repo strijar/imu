@@ -128,6 +128,9 @@ int main() {
 	mpu6050->setSampleRate(0);
         mpu6050->setDLPFMode(6);
         mpu6050->setSleepMode(false);
+
+        control.setGyroscop(&gyro);
+        control.setAccelerometer(&accel);
     } else {
         exit(1);
     }
@@ -140,7 +143,8 @@ int main() {
 
         hmc5883L->initialize();
         hmc5883L->setOutputRate(OUTPUT_RATE_6);	// 75Hz
-        control.setMagnetometer(hmc5883L);
+
+        control.setMagnetometer(&mag);
     } else {
 	exit(1);
     }

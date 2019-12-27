@@ -12,7 +12,10 @@ using namespace wampcc;
 Control::Control(Compensation *comp, MadgwickAHRS *ahrs) {
     this->comp = comp;
     this->ahrs = ahrs;
+
     this->mag = NULL;
+    this->accel = NULL;
+    this->gyro = NULL;
 
     localThread = NULL;
     localSession = NULL;
@@ -27,8 +30,16 @@ Control::~Control() {
     }
 }
 
-void Control::setMagnetometer(Magnetometer *mag) {
+void Control::setMagnetometer(Vector3i *mag) {
     this->mag = mag;
+}
+
+void Control::setGyroscop(Vector3i *gyro) {
+    this->gyro = gyro;
+}
+
+void Control::setAccelerometer(Vector3i *accel) {
+    this->accel = accel;
 }
 
 void Control::init() {
@@ -36,6 +47,22 @@ void Control::init() {
 
     if (auto ec = fut.get())
 	throw std::runtime_error(ec.message());
+
+    router->callable("imu", "GetFreq",
+	[this](wamp_router&, wamp_session& caller, call_info info) { getFreq(caller, info); }
+    );
+
+    router->callable("imu", "SetFreq",
+	[this](wamp_router&, wamp_session& caller, call_info info) { setFreq(caller, info); }
+    );
+
+    router->callable("imu", "LoadConfig",
+	[this](wamp_router&, wamp_session& caller, call_info info) { loadConfig(caller, info); }
+    );
+
+    router->callable("imu", "StoreConfig",
+	[this](wamp_router&, wamp_session& caller, call_info info) { storeConfig(caller, info); }
+    );
 
     localThread = new std::thread(&Control::localWork, this);
     localThread->detach();
@@ -60,6 +87,71 @@ void Control::localWork() {
 
 	std::cout << "Local session: closed";
     }
+}
+
+void Control::getFreq(wamp_session& caller, call_info& info) {
+    json_object			answer;
+
+    answer["ok"] = true;
+    answer["freq"] = publishFreq;
+
+    caller.result(info.request_id, {}, answer);
+}
+
+void Control::setFreq(wamp_session& caller, call_info& info) {
+    json_object			answer;
+    const json_object		args = info.args.args_dict;
+    auto			freq = args.find("freq");
+
+    if (freq == args.end()) {
+	answer["ok"] = false;
+	answer["error"] = "Need freq";
+    } else {
+	publishFreq = freq->second.as_uint();
+	answer["ok"] = true;
+    }
+
+    caller.result(info.request_id, {}, answer);
+}
+
+void Control::loadConfig(wamp_session& caller, call_info& info) {
+    json_object			answer;
+    const json_object		args = info.args.args_dict;
+    auto			name = args.find("name");
+
+    if (name == args.end()) {
+	answer["ok"] = false;
+	answer["error"] = "Need name";
+    } else {
+	if (loadConfig(name->second.as_string())) {
+	    answer["ok"] = true;
+	} else {
+	    answer["ok"] = false;
+	    answer["error"] = "File problem";
+	}
+    }
+
+    caller.result(info.request_id, {}, answer);
+}
+
+void Control::storeConfig(wamp_session& caller, call_info& info) {
+    json_object			answer;
+    const json_object		args = info.args.args_dict;
+    auto			name = args.find("name");
+
+    if (name == args.end()) {
+	answer["ok"] = false;
+	answer["error"] = "Need name";
+    } else {
+	if (storeConfig(name->second.as_string())) {
+	    answer["ok"] = true;
+	} else {
+	    answer["ok"] = false;
+	    answer["error"] = "File problem";
+	}
+    }
+
+    caller.result(info.request_id, {}, answer);
 }
 
 bool Control::loadConfig(std::string filename) {
@@ -148,35 +240,38 @@ void Control::publishAccel() {
 void Control::work() {
     publishAngle();
     publishAccel();
+
+    publishAccelRaw();
+    publishGyroRaw();
+    publishMagRaw();
 }
 
-void Control::publishCalibrateAccel() {
+void Control::publishAccelRaw() {
+    json_object	opts;
+
+    opts["x"] = (*accel)(0);
+    opts["y"] = (*accel)(1);
+    opts["z"] = (*accel)(2);
+
+    localSession->publish("accel.raw", {}, {{ opts }}, {});
 }
 
-void Control::publishCalibrateGyro() {
+void Control::publishGyroRaw() {
+    json_object	opts;
+
+    opts["x"] = (*gyro)(0);
+    opts["y"] = (*gyro)(1);
+    opts["z"] = (*gyro)(2);
+
+    localSession->publish("gyro.raw", {}, {{ opts }}, {});
 }
 
-void Control::publishCalibrateMag() {
-/*
-    json_object opts, raw, cal;
+void Control::publishMagRaw() {
+    json_object	opts;
 
-    if (mag && localSession) {
-	int16_t	m[3];
-	double	c[3];
+    opts["x"] = (*mag)(0);
+    opts["y"] = (*mag)(1);
+    opts["z"] = (*mag)(2);
 
-	comp->calcMagAvr();
-
-	m[0] = comp->mAvr[0];	m[1] = comp->mAvr[1];	m[2] = comp->mAvr[2];
-
-	comp->doMag(m, c);
-
-	raw["x"] = m[0];	raw["y"] = m[1];	raw["z"] = m[2];
-	cal["x"] = c[0];	cal["y"] = c[1];	cal["z"] = c[2];
-
-	opts["raw"] = raw;
-	opts["cal"] = cal;
-
-	localSession->publish("calMag", {}, {{ opts }}, {});
-    }
-*/
+    localSession->publish("mag.raw", {}, {{ opts }}, {});
 }

@@ -260,7 +260,7 @@ namespace cacaosd_hmc5883l {
                                  OPERATION_MODE_START);
     }
 
-    void HMC5883L::getMagnitude(Vector3i &res) const {
+    void HMC5883L::getMagnitude(Vector3i &res) {
 	res(0) = i2c->readWord(X_HIGH, X_LOW);
 	res(1) = i2c->readWord(Y_HIGH, Y_LOW);
 	res(2) = i2c->readWord(Z_HIGH, Z_LOW);

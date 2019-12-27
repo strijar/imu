@@ -119,7 +119,7 @@ namespace cacaosd_hmc5883l {
 
         uint8_t getOperationMode() const;
 
-	virtual void getMagnitude(Vector3i &res) const;
+	virtual void getMagnitude(Vector3i &res);
 
         uint8_t getRDYStatus() const;
 

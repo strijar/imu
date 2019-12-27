@@ -109,12 +109,10 @@ namespace cacaosd_mpu6050 {
 
         virtual ~MPU6050();
 
-	virtual void getAngularVelocity(Vector3i &res) const;
-	virtual void getAcceleration(Vector3i &res)const;
+	virtual void getAngularVelocity(Vector3i &res);
+	virtual void getAcceleration(Vector3i &res);
 
         void initialize();
-
-        void calibrate(int n);
 
         void reset();
 
