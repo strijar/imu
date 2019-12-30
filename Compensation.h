@@ -27,9 +27,9 @@ public:
     void doGyro(Vector3i src, Vector3d &dst);
     void doMag(Vector3i src, Vector3d &dst);
 
-    void loadAccel(json_value& args);
-    void loadMag(json_value& args);
-    void loadGyro(json_value& args);
+    bool loadAccel(json_value& args);
+    bool loadMag(json_value& args);
+    bool loadGyro(json_value& args);
 
     void storeAccel(json_object& args);
     void storeMag(json_object& args);

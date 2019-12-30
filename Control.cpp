@@ -119,15 +119,51 @@ void Control::loadConfig(wamp_session& caller, call_info& info) {
     const json_object		args = info.args.args_dict;
     auto			name = args.find("name");
 
-    if (name == args.end()) {
-	answer["ok"] = false;
-	answer["error"] = "Need name";
-    } else {
+    if (name != args.end()) {
 	if (loadConfig(name->second.as_string())) {
 	    answer["ok"] = true;
 	} else {
 	    answer["ok"] = false;
 	    answer["error"] = "File problem";
+	}
+    }
+
+    auto j_accel = args.find("accel");
+
+    if (j_accel != args.end()) {
+	json_value conf = j_accel->second;
+
+	if (comp->loadAccel(conf)) {
+	    answer["ok"] = true;
+	} else {
+	    answer["ok"] = false;
+	    answer["error"] = "Accel problem";
+	}
+    }
+
+    auto j_gyro = args.find("gyro");
+
+    if (j_gyro != args.end()) {
+	json_value conf = j_gyro->second;
+
+	if (comp->loadGyro(conf)) {
+	    answer["ok"] = true;
+	} else {
+	    answer["ok"] = false;
+	    answer["error"] = "Gyro problem";
+	}
+    }
+
+    auto j_mag = args.find("mag");
+
+    if (j_mag != args.end()) {
+	json_value conf = j_mag->second;
+
+	if (comp->loadMag(conf)) {
+	    answer["ok"] = true;
+	} else {
+	    answer["ok"] = false;
+	    answer["error"] = "Mag problem";
 	}
     }
 
