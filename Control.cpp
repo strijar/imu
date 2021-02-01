@@ -213,12 +213,12 @@ bool Control::loadConfig(std::string filename) {
 	comp->loadMag(config["mag"]);
 	comp->loadGyro(config["gyro"]);
 
-	delete buf;
+	delete[] buf;
 	return true;
     } catch (json_error const &e) {
 	std::cout << e.what() << std::endl;
 
-	delete buf;
+	delete[] buf;
 	return false;
     }
 
@@ -252,6 +252,8 @@ bool Control::storeConfig(std::string filename) {
 void Control::publishAngle() {
     Vector3d	angle;
 
+    if (!ahrs) return;
+
     ahrs->getAngles(angle);
 
     json_object opts;
@@ -265,6 +267,8 @@ void Control::publishAngle() {
 
 void Control::publishAccel() {
     json_object opts;
+
+    if (!ahrs) return;
 
     opts["x"] = ahrs->accel(0) * 1000.0;
     opts["y"] = ahrs->accel(1) * 1000.0;
@@ -285,6 +289,8 @@ void Control::work() {
 void Control::publishAccelRaw() {
     json_object	opts;
 
+    if (!accel) return;
+
     opts["x"] = (*accel)(0);
     opts["y"] = (*accel)(1);
     opts["z"] = (*accel)(2);
@@ -295,6 +301,8 @@ void Control::publishAccelRaw() {
 void Control::publishGyroRaw() {
     json_object	opts;
 
+    if (!gyro) return;
+
     opts["x"] = (*gyro)(0);
     opts["y"] = (*gyro)(1);
     opts["z"] = (*gyro)(2);
@@ -304,6 +312,8 @@ void Control::publishGyroRaw() {
 
 void Control::publishMagRaw() {
     json_object	opts;
+
+    if (!mag) return;
 
     opts["x"] = (*mag)(0);
     opts["y"] = (*mag)(1);

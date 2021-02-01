@@ -1,6 +1,7 @@
 LDFLAGS += -lm -lrt -lpthread
 LDFLAGS += -lwampcc -lwampcc_json -lssl -luv
 CXXFLAGS += -g -std=c++17 -O2
+CXXFLAGS += -I$(SYSROOT)/usr/include/eigen3
 
 OBJS = \
     Compensation.o\

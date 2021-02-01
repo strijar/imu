@@ -23,5 +23,5 @@ class Component(ApplicationSession):
 
 
 if __name__ == '__main__':
-    runner = ApplicationRunner(u'ws://192.168.49.94:55555', u'imu')
+    runner = ApplicationRunner(u'ws://localhost:55555', u'imu')
     runner.run(Component)

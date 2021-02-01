@@ -117,7 +117,7 @@ int main() {
     control.loadConfig("imu.json");
     control.init();
 
-    I2cPort *i2c0 = new I2cPort(0x68, 0);
+    I2cPort *i2c0 = new I2cPort(0x68, 12);
     i2c0->openConnection();
 
     if (i2c0->isConnectionOpen()) {
@@ -135,7 +135,7 @@ int main() {
         exit(1);
     }
 
-    I2cPort *i2c1 = new I2cPort(0x1E, 0);
+    I2cPort *i2c1 = new I2cPort(0x1E, 12);
     i2c1->openConnection();
 
     if (i2c1->isConnectionOpen()) {
@@ -152,7 +152,7 @@ int main() {
     gyro_timer();
 
     if (hmc5883L) {
-	mag_timer();
+//	mag_timer();
     }
 
     imu.setAccelSigma(0.002);
